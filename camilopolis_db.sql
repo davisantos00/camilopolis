@@ -1,9 +1,10 @@
+
 -- phpMyAdmin SQL Dump
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Tempo de geração: 14/08/2026 às 19:00
+-- Tempo de geração: 10/09/2026 às 16:48
 -- Versão do servidor: 10.4.32-MariaDB
 -- Versão do PHP: 8.2.12
 
@@ -89,7 +90,8 @@ CREATE TABLE `reservas` (
 INSERT INTO `reservas` (`id`, `usuario_email`, `data`, `horario`, `tipo_reserva`, `valor`) VALUES
 (2, 'ds.805479@gmail.com', '2026-07-31', '18:00', 'Avulso (1h)', 120.00),
 (5, 'lucas@gmail.com', '2026-07-31', '19:00', 'Avulso (1h)', 120.00),
-(7, 'lucas@gmail.com', '2026-07-30', '19:00', 'Avulso (1h)', 120.00);
+(7, 'lucas@gmail.com', '2026-07-30', '19:00', 'Avulso (1h)', 120.00),
+(9, 'ds.805479@gmail.com', '2026-09-10', '18:00', 'Avulso (1h)', 120.00);
 
 -- --------------------------------------------------------
 
@@ -127,18 +129,20 @@ CREATE TABLE `usuarios` (
   `email` varchar(100) NOT NULL,
   `telefone` varchar(20) NOT NULL,
   `senha` varchar(255) NOT NULL,
-  `foto` varchar(255) DEFAULT NULL
+  `foto` varchar(255) DEFAULT NULL,
+  `codigo_recuperacao` varchar(6) DEFAULT NULL,
+  `codigo_expiracao` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Despejando dados para a tabela `usuarios`
 --
 
-INSERT INTO `usuarios` (`id`, `nome`, `email`, `telefone`, `senha`, `foto`) VALUES
-(1, 'Davi Pinheiro dos Santos', 'ds.805479@gmail.com', '', '@Maninhomeu8', 'uploads/d74b4f73fb2b420460a5949a34002749.jpg'),
-(3, 'lucas', 'lucas@gmail.com', '', '12345', 'uploads/cc7f5a62438f7b4e2a64e64e1e3746d3.jpg'),
-(4, 'yan', 'yan@gmail.com', '', '12345', NULL),
-(5, 'davi', 'davi', '', '123', NULL);
+INSERT INTO `usuarios` (`id`, `nome`, `email`, `telefone`, `senha`, `foto`, `codigo_recuperacao`, `codigo_expiracao`) VALUES
+(1, 'Davi Pinheiro dos Santos', 'ds.805479@gmail.com', '', '12345', 'uploads/d74b4f73fb2b420460a5949a34002749.jpg', NULL, NULL),
+(3, 'lucas', 'lucas@gmail.com', '', '12345', 'uploads/cc7f5a62438f7b4e2a64e64e1e3746d3.jpg', NULL, NULL),
+(4, 'yan', 'yan@gmail.com', '', '12345', NULL, NULL, NULL),
+(5, 'davi', 'davi', '', '123', NULL, NULL, NULL);
 
 --
 -- Índices para tabelas despejadas
@@ -197,7 +201,7 @@ ALTER TABLE `agendamentos_churrasqueira`
 -- AUTO_INCREMENT de tabela `reservas`
 --
 ALTER TABLE `reservas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT de tabela `reservas_churrasqueira`
