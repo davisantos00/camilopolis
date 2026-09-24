@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once('funcoes.php');
 if (!isset($_SESSION['usuario_email'])) {
     header("Location: login.php");
     exit();
@@ -18,13 +18,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     try {
         $conn = new mysqli('localhost', 'root', '', 'camilopolis_db');
 
-        $sql = "INSERT INTO reservas_churrasqueira (usuario_email, data, convidados) VALUES ('$email_usuario', '$data', '$convidados')";
+        $stmt = $conn->prepare("INSERT INTO reservas_churrasqueira (usuario_email, data, convidados, tipo_reserva, valor) VALUES (?, ?, ?, 'Avulso', ?)");
+        $valor = PRECO_CHURRASQUEIRA;
+        $convidados = (int) $convidados;
+        $stmt->bind_param("ssid", $email_usuario, $data, $convidados, $valor);
+        $stmt->execute();
+        $reserva_id = $stmt->insert_id;
+        $stmt->close();
 
-        $conn->query($sql);
-        
-        // Se deu tudo certo, mostra a mensagem e redireciona
-        echo "<script>alert('Churrasqueira reservada com sucesso!'); window.location.href='minhas_reservas.php';</script>";
-        exit();
+        // Se deu tudo certo, leva direto para a tela de pagamento
+        redirecionar("pagamento.php?tipo=churrasqueira&reserva=$reserva_id", 'Churrasqueira reservada com sucesso! Agora é só concluir o pagamento.');
 
     } catch (mysqli_sql_exception $e) {
         // Se bater na regra do banco que proíbe duas reservas no mesmo dia (Erro 1062)
@@ -87,10 +90,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .btn-agendar:hover { background: #b04600; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(211, 84, 0, 0.3); }
         .erro { background: #ffe6e6; color: #900; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; }
 
-        @media (max-width: 768px) { .container { flex-direction: column; } .lado-desenho, .lado-form { width: 100%; } }
+        .preco-info { background: #fff5ec; border: 1px solid #f5c6a5; color: #8a3a00; padding: 12px 15px; border-radius: 8px; margin-bottom: 25px; font-size: 14px; }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; margin: 16px; }
+            .lado-desenho, .lado-form { width: 100%; }
+            .lado-desenho { padding: 24px 16px; }
+            .lado-form { padding: 24px 20px; }
+        }
     </style>
+    <link rel="stylesheet" href="comum.css">
+    <script src="comum.js" defer></script>
 </head>
 <body>
+<?php exibir_aviso(); ?>
 
     <div class="header">
         <a href="painel.php" class="btn-voltar">← Voltar ao Painel</a>
@@ -114,7 +127,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="lado-form">
             <h2>🍖 Reservar Churrasqueira</h2>
             <?php echo $mensagem; ?>
-            
+
+            <div class="preco-info">💰 Valor da reserva (dia inteiro): <strong><?php echo formatar_dinheiro(PRECO_CHURRASQUEIRA); ?></strong>. O pagamento é feito logo em seguida, por PIX ou cartão.</div>
+
             <form method="POST" action="">
                 <div class="form-group">
                     <label class="titulo-campo">📅 Data do Churrasco:</label>
@@ -131,6 +146,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
 
     </div>
+
+    <div class="rodape-interno"><?php echo htmlspecialchars(texto_direitos()); ?></div>
 
 </body>
 </html>

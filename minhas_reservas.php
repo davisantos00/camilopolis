@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once('funcoes.php');
 if (!isset($_SESSION['usuario_email'])) {
     header("Location: login.php");
     exit();
@@ -16,34 +16,59 @@ if ($conn->connect_error) {
          </div>");
 }
 
+garantir_estrutura($conn);
+
 // LÓGICA DE CANCELAMENTO
 if (isset($_GET['cancelar']) && isset($_GET['id']) && isset($_GET['tipo'])) {
     $id_cancelar = intval($_GET['id']);
     $tipo_reserva = $_GET['tipo'];
+    $cancelou = false;
 
     if ($tipo_reserva == 'quadra') {
         $stmt = $conn->prepare("DELETE FROM reservas WHERE id = ? AND usuario_email = ?");
         $stmt->bind_param("is", $id_cancelar, $email_usuario);
         $stmt->execute();
+        $cancelou = $stmt->affected_rows > 0;
         $stmt->close();
     } elseif ($tipo_reserva == 'churrasqueira') {
         $stmt = $conn->prepare("DELETE FROM reservas_churrasqueira WHERE id = ? AND usuario_email = ?");
         $stmt->bind_param("is", $id_cancelar, $email_usuario);
         $stmt->execute();
+        $cancelou = $stmt->affected_rows > 0;
         $stmt->close();
     }
 
-    echo "<script>alert('Reserva cancelada com sucesso.'); window.location.href='minhas_reservas.php';</script>";
-    exit();
+    if ($cancelou) {
+        // Pagamento pendente é descartado. Pagamento já feito fica registrado como cancelado (para o reembolso)
+        $stmt = $conn->prepare("DELETE FROM pagamentos WHERE tipo = ? AND reserva_id = ? AND status = 'pendente'");
+        $stmt->bind_param("si", $tipo_reserva, $id_cancelar);
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $conn->prepare("UPDATE pagamentos SET status = 'cancelado' WHERE tipo = ? AND reserva_id = ?");
+        $stmt->bind_param("si", $tipo_reserva, $id_cancelar);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    redirecionar('minhas_reservas.php', 'Reserva cancelada com sucesso.', 'info');
 }
 
-// Busca as reservas de QUADRA do usuário logado
-$sql_quadra = "SELECT * FROM reservas WHERE usuario_email = '$email_usuario' ORDER BY data DESC";
-$resultado_quadra = $conn->query($sql_quadra);
+// Busca as reservas de QUADRA do usuário logado (com a situação do pagamento)
+$stmt = $conn->prepare("SELECT r.*, p.status AS status_pagamento FROM reservas r
+                        LEFT JOIN pagamentos p ON p.tipo = 'quadra' AND p.reserva_id = r.id
+                        WHERE r.usuario_email = ? ORDER BY r.data DESC");
+$stmt->bind_param("s", $email_usuario);
+$stmt->execute();
+$resultado_quadra = $stmt->get_result();
 
 // Busca as reservas de CHURRASQUEIRA
-$sql_churras = "SELECT * FROM reservas_churrasqueira WHERE usuario_email = '$email_usuario' ORDER BY data DESC";
-$resultado_churras = $conn->query($sql_churras);
+$stmt = $conn->prepare("SELECT r.*, p.status AS status_pagamento FROM reservas_churrasqueira r
+                        LEFT JOIN pagamentos p ON p.tipo = 'churrasqueira' AND p.reserva_id = r.id
+                        WHERE r.usuario_email = ? ORDER BY r.data DESC");
+$stmt->bind_param("s", $email_usuario);
+$stmt->execute();
+$resultado_churras = $stmt->get_result();
 
 $hoje = date("Y-m-d");
 ?>
@@ -80,6 +105,11 @@ $hoje = date("Y-m-d");
         .status-badge { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; text-transform: uppercase; text-align: center; }
         .status-agendado { background-color: #fff9e6; color: #b38600; border: 1px solid var(--amarelo); }
         .status-concluido { background-color: #f0f0f0; color: #777; border: 1px solid #ccc; }
+        .status-pago { background-color: #e6f9ed; color: #1e7e34; border: 1px solid #b7e4c7; }
+
+        /* Botão de Pagar */
+        .btn-pagar { background: #28a745; color: white; border: 1px solid #28a745; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-block; transition: 0.3s; }
+        .btn-pagar:hover { background: #218838; }
 
         /* Botão de Cancelar */
         .btn-cancelar { background: #ffe6e6; color: var(--vermelho); border: 1px solid #ffcccc; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; text-decoration: none; display: inline-block; }
@@ -106,7 +136,16 @@ $hoje = date("Y-m-d");
         .btn-modal-voltar:hover { background: #d0d0d0; }
         .btn-modal-confirmar { flex: 1; padding: 12px; background: var(--vermelho); color: white; border: none; border-radius: 8px; font-weight: bold; text-decoration: none; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .btn-modal-confirmar:hover { background: #b02a37; }
+
+        @media (max-width: 600px) {
+            .container { margin: 20px auto; padding: 0 16px; }
+            .reserva-card { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .acoes-card { flex-wrap: wrap; gap: 8px; }
+            .modal-botoes { flex-direction: column; }
+        }
     </style>
+    <link rel="stylesheet" href="comum.css">
+    <script src="comum.js" defer></script>
     <script>
         function abrirModalCancelamento(tipo, id) {
             let linkAcao = "minhas_reservas.php?cancelar=1&tipo=" + tipo + "&id=" + id;
@@ -120,6 +159,7 @@ $hoje = date("Y-m-d");
     </script>
 </head>
 <body>
+<?php exibir_aviso(); ?>
 
     <div class="header">
         <a href="painel.php" class="btn-voltar">← Voltar ao Painel</a>
@@ -141,12 +181,17 @@ $hoje = date("Y-m-d");
                 <div class="reserva-card">
                     <div class="reserva-info">
                         <p class="reserva-titulo">Quadra Poliesportiva</p>
-                        <p class="reserva-detalhes">📅 Data: <strong><?php echo $data_formatada; ?></strong> | ⏰ Horário: <strong><?php echo htmlspecialchars($row['horario']); ?></strong></p>
+                        <p class="reserva-detalhes">📅 Data: <strong><?php echo $data_formatada; ?></strong> | ⏰ Horário: <strong><?php echo htmlspecialchars($row['horario']); ?></strong> | 💰 <strong><?php echo formatar_dinheiro($row['valor']); ?></strong></p>
                     </div>
                     <div class="acoes-card">
                         <div class="status-badge <?php echo $classe_status; ?>">
                             <?php echo $texto_status; ?>
                         </div>
+                        <?php if ($row['status_pagamento'] === 'pago'): ?>
+                            <div class="status-badge status-pago">💳 Pago</div>
+                        <?php else: ?>
+                            <a href="pagamento.php?tipo=quadra&reserva=<?php echo $row['id']; ?>" class="btn-pagar">💳 Pagar</a>
+                        <?php endif; ?>
                         <?php if (!$passou): ?>
                             <button onclick="abrirModalCancelamento('quadra', <?php echo $row['id']; ?>)" class="btn-cancelar">Cancelar</button>
                         <?php endif; ?>
@@ -172,12 +217,17 @@ $hoje = date("Y-m-d");
                 <div class="reserva-card" style="border-left-color: #d35400;">
                     <div class="reserva-info">
                         <p class="reserva-titulo" style="color: #d35400;">Área de Churrasco</p>
-                        <p class="reserva-detalhes">📅 Data: <strong><?php echo $data_formatada; ?></strong> | 👥 Convidados: <strong><?php echo htmlspecialchars($row['convidados']); ?> pessoas</strong></p>
+                        <p class="reserva-detalhes">📅 Data: <strong><?php echo $data_formatada; ?></strong> | 👥 Convidados: <strong><?php echo htmlspecialchars($row['convidados']); ?> pessoas</strong> | 💰 <strong><?php echo formatar_dinheiro($row['valor'] > 0 ? $row['valor'] : PRECO_CHURRASQUEIRA); ?></strong></p>
                     </div>
                     <div class="acoes-card">
                         <div class="status-badge <?php echo $classe_status; ?>">
                             <?php echo $texto_status; ?>
                         </div>
+                        <?php if ($row['status_pagamento'] === 'pago'): ?>
+                            <div class="status-badge status-pago">💳 Pago</div>
+                        <?php else: ?>
+                            <a href="pagamento.php?tipo=churrasqueira&reserva=<?php echo $row['id']; ?>" class="btn-pagar">💳 Pagar</a>
+                        <?php endif; ?>
                         <?php if (!$passou): ?>
                             <button onclick="abrirModalCancelamento('churrasqueira', <?php echo $row['id']; ?>)" class="btn-cancelar">Cancelar</button>
                         <?php endif; ?>
@@ -204,6 +254,8 @@ $hoje = date("Y-m-d");
             </div>
         </div>
     </div>
+
+    <div class="rodape-interno"><?php echo htmlspecialchars(texto_direitos()); ?></div>
 
 </body>
 </html>

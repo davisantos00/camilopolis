@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once('funcoes.php');
 @include_once('conexao.php');
 
 $mensagem = "";
@@ -78,7 +78,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             if (mysqli_num_rows($resultado_valida) > 0) {
                 // Atualiza a senha e invalida o código usado
-                $senha_final = mysqli_real_escape_string($conn, $nova_senha);
+                $senha_final = mysqli_real_escape_string($conn, criptografar_senha($nova_senha));
                 
                 $sql_update = "UPDATE usuarios SET 
                                 senha = '$senha_final', 
@@ -89,11 +89,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 if (mysqli_query($conn, $sql_update)) {
                     unset($_SESSION['etapa_recuperacao']);
                     unset($_SESSION['email_recuperacao']);
-                    echo "<script>
-                        alert('Senha alterada com sucesso! Faça login com a nova senha.');
-                        window.location.href='login.php';
-                    </script>";
-                    exit();
+                    redirecionar('login.php', 'Senha alterada com sucesso! Faça login com a nova senha.');
                 } else {
                     $mensagem = "<p style='color: #d9534f; font-weight:bold; text-align:center;'>Erro ao atualizar a senha.</p>";
                 }
@@ -108,6 +104,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recuperar Senha - Associação Amigos de Camilópolis</title>
     <style>
         :root { --azul-escuro: #0A3D73; --azul-claro: #1A5B9C; --amarelo: #FFC107; --branco: #FFFFFF; }
@@ -153,8 +150,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .opcoes a { color: var(--azul-claro); text-decoration: none; font-weight: bold; display: block; margin-bottom: 6px; }
         .opcoes a:hover { text-decoration: underline; }
     </style>
+    <link rel="stylesheet" href="comum.css">
+    <script src="comum.js" defer></script>
 </head>
-<body>
+<body class="pagina-acesso">
+<?php exibir_aviso(); ?>
 <div class="overlay"></div>
 
 <div class="login-card">

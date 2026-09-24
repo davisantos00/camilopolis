@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once('funcoes.php');
 if (!isset($_SESSION['usuario_email'])) {
     header("Location: login.php");
     exit();
@@ -10,8 +10,13 @@ $email_usuario = $_SESSION['usuario_email'];
 // Conexão para buscar o nome real do usuário logado
 $conn = new mysqli('localhost', 'root', '', 'camilopolis_db');
 $nome_exibicao = "Usuário";
+$noticias = [];
+$placares = [];
 
 if (!$conn->connect_error) {
+    $conn->set_charset('utf8mb4');
+    garantir_estrutura($conn);
+
     $stmt = $conn->prepare("SELECT nome FROM usuarios WHERE email = ?");
     $stmt->bind_param("s", $email_usuario);
     $stmt->execute();
@@ -20,7 +25,27 @@ if (!$conn->connect_error) {
         $nome_exibicao = $row['nome'];
     }
     $stmt->close();
+
+    // Notícias e placares são cadastrados pelo aplicativo administrativo
+    $noticias = $conn->query("SELECT * FROM noticias ORDER BY destaque DESC, criado_em DESC, id DESC LIMIT 10")->fetch_all(MYSQLI_ASSOC);
+    $placares = $conn->query("SELECT * FROM placares ORDER BY data_jogo IS NULL, data_jogo DESC, id DESC LIMIT 10")->fetch_all(MYSQLI_ASSOC);
+
+    // Aviso de respostas novas do suporte
+    $stmt = $conn->prepare("SELECT COUNT(*) AS total FROM suporte_mensagens WHERE usuario_email = ? AND resposta IS NOT NULL AND resposta_lida = 0");
+    $stmt->bind_param("s", $email_usuario);
+    $stmt->execute();
+    $respostas_suporte = $stmt->get_result()->fetch_assoc()['total'];
+    $stmt->close();
+
     $conn->close();
+}
+
+// Formata a data da notícia como "Hoje", "Ontem" ou dd/mm/aaaa
+function rotulo_data($data_hora) {
+    $data = date('Y-m-d', strtotime($data_hora));
+    if ($data === date('Y-m-d')) return 'Hoje';
+    if ($data === date('Y-m-d', strtotime('-1 day'))) return 'Ontem';
+    return date('d/m/Y', strtotime($data_hora));
 }
 ?>
 <!DOCTYPE html>
@@ -77,12 +102,31 @@ if (!$conn->connect_error) {
         .tabela-placares tr:last-child td { border-bottom: none; }
         .placar-destaque { font-weight: bold; color: #28a745; }
 
+        .placar-empate { font-weight: bold; color: #d35400; }
+        .placar-derrota { font-weight: bold; color: #dc3545; }
+        .placar-campeonato { display: block; font-size: 11px; color: #888; font-weight: normal; }
+        .mural-vazio { color: #888; font-style: italic; text-align: center; padding: 15px; }
+        .nav-contador { background: #dc3545; color: white; border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 4px; }
+
         @media (max-width: 900px) {
             .container-principal { grid-template-columns: 1fr; }
         }
+
+        @media (max-width: 600px) {
+            .header { padding: 12px 16px; }
+            .logo-img { width: 38px; height: 38px; }
+            .logo-texto { font-size: 15px; }
+            .usuario-info { font-size: 12px; }
+            .container-principal { margin: 16px auto; padding: 0 16px; gap: 16px; }
+            .secao-card, .menu-lateral { padding: 16px; }
+            .tabela-placares th, .tabela-placares td { padding: 8px 4px; font-size: 13px; }
+        }
     </style>
+    <link rel="stylesheet" href="comum.css">
+    <script src="comum.js" defer></script>
 </head>
 <body>
+<?php exibir_aviso(); ?>
 
     <!-- CABEÇALHO COM A LOGO ATUALIZADA -->
     <div class="header">
@@ -92,7 +136,7 @@ if (!$conn->connect_error) {
         </a>
         <div class="usuario-info">
             Olá, <span><?php echo htmlspecialchars($nome_exibicao); ?></span><br>
-            <a href="login.php" class="btn-sair">Sair do Sistema</a>
+            <a href="logout.php" class="btn-sair">Sair do Sistema</a>
         </div>
     </div>
 
@@ -127,6 +171,22 @@ if (!$conn->connect_error) {
                 </div>
             </a>
 
+            <a href="pagamento_associado.php" class="nav-card">
+                <div class="nav-icone">💳</div>
+                <div class="nav-detalhes">
+                    <h4>Mensalidade de Sócio</h4>
+                    <p>Pague sua mensalidade</p>
+                </div>
+            </a>
+
+            <a href="suporte.php" class="nav-card">
+                <div class="nav-icone">💬</div>
+                <div class="nav-detalhes">
+                    <h4>Suporte<?php if (!empty($respostas_suporte)): ?><span class="nav-contador"><?php echo $respostas_suporte; ?></span><?php endif; ?></h4>
+                    <p>Fale com a Associação</p>
+                </div>
+            </a>
+
             <a href="meu_perfil.php" class="nav-card">
                 <div class="nav-icone">👤</div>
                 <div class="nav-detalhes">
@@ -139,27 +199,30 @@ if (!$conn->connect_error) {
         <!-- PAINEL CENTRAL -->
         <div class="conteudo-central">
             
-            <!-- MURAL DE NOVIDADES -->
+            <!-- MURAL DE NOVIDADES (cadastrado pelo aplicativo administrativo) -->
             <div class="secao-card">
                 <div class="secao-titulo">📰 Mural de Novidades</div>
-                
-                <div class="novidade-item destaque">
-                    <span class="novidade-tag">Hoje</span>
-                    <h3 class="novidade-titulo">Inscrições para o Campeonato Interno 2026</h3>
-                    <p class="novidade-texto">Estão abertas as inscrições para o campeonato de futsal deste ano! Monte seu time e venha participar. As vagas são limitadas e haverá premiação em dinheiro para os primeiros colocados.</p>
-                </div>
 
-                <div class="novidade-item">
-                    <span class="novidade-tag">Aviso Importante</span>
-                    <h3 class="novidade-titulo">Reforma da Churrasqueira Concluída</h3>
-                    <p class="novidade-texto">A nova área de lazer está pronta! Adicionamos novos espetos, uma grelha maior e reformamos as mesas. Aproveite para agendar seu churrasco com a galera do futebol.</p>
-                </div>
+                <?php if (empty($noticias)): ?>
+                    <p class="mural-vazio">Nenhuma novidade no momento.</p>
+                <?php endif; ?>
+
+                <?php foreach ($noticias as $noticia): ?>
+                    <div class="novidade-item<?php echo $noticia['destaque'] ? ' destaque' : ''; ?>">
+                        <span class="novidade-tag"><?php echo htmlspecialchars($noticia['tag']); ?> · <?php echo rotulo_data($noticia['criado_em']); ?></span>
+                        <h3 class="novidade-titulo"><?php echo htmlspecialchars($noticia['titulo']); ?></h3>
+                        <p class="novidade-texto"><?php echo nl2br(htmlspecialchars($noticia['texto'])); ?></p>
+                    </div>
+                <?php endforeach; ?>
             </div>
 
-            <!-- PLACARES DA FEDERAÇÃO -->
+            <!-- PLACARES DA FEDERAÇÃO (cadastrados pelo aplicativo administrativo) -->
             <div class="secao-card">
                 <div class="secao-titulo">🏆 Placares da Federação</div>
-                
+
+                <?php if (empty($placares)): ?>
+                    <p class="mural-vazio">Nenhum placar cadastrado.</p>
+                <?php else: ?>
                 <table class="tabela-placares">
                     <thead>
                         <tr>
@@ -169,28 +232,39 @@ if (!$conn->connect_error) {
                         </tr>
                     </thead>
                     <tbody>
+                        <?php foreach ($placares as $jogo):
+                            $casa_eh_nosso = stripos($jogo['time_casa'], 'Camil') !== false;
+                            $fora_eh_nosso = stripos($jogo['time_visitante'], 'Camil') !== false;
+                            $nossos_gols = $casa_eh_nosso ? $jogo['gols_casa'] : $jogo['gols_visitante'];
+                            $gols_adversario = $casa_eh_nosso ? $jogo['gols_visitante'] : $jogo['gols_casa'];
+
+                            // Verde = vitória do Camilópolis, laranja = empate, vermelho = derrota
+                            $classe_placar = 'placar-empate';
+                            if ($nossos_gols > $gols_adversario) $classe_placar = 'placar-destaque';
+                            if ($nossos_gols < $gols_adversario) $classe_placar = 'placar-derrota';
+                            if (!$casa_eh_nosso && !$fora_eh_nosso) $classe_placar = '';
+                        ?>
                         <tr>
-                            <td><strong>Camilópolis FC</strong></td>
-                            <td><span class="placar-destaque">4 x 2</span></td>
-                            <td>Juventude AC</td>
+                            <td><?php echo $casa_eh_nosso ? '<strong>' . htmlspecialchars($jogo['time_casa']) . '</strong>' : htmlspecialchars($jogo['time_casa']); ?></td>
+                            <td>
+                                <span class="<?php echo $classe_placar; ?>"><?php echo (int) $jogo['gols_casa']; ?> x <?php echo (int) $jogo['gols_visitante']; ?></span>
+                                <?php if (!empty($jogo['campeonato']) || !empty($jogo['data_jogo'])): ?>
+                                    <span class="placar-campeonato"><?php echo htmlspecialchars(trim($jogo['campeonato'] . ' ' . ($jogo['data_jogo'] ? date('d/m', strtotime($jogo['data_jogo'])) : ''))); ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo $fora_eh_nosso ? '<strong>' . htmlspecialchars($jogo['time_visitante']) . '</strong>' : htmlspecialchars($jogo['time_visitante']); ?></td>
                         </tr>
-                        <tr>
-                            <td>Real Santo André</td>
-                            <td><span style="color:#d35400; font-weight:bold;">1 x 1</span></td>
-                            <td><strong>Camilópolis FC</strong></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Camilópolis FC</strong></td>
-                            <td><span class="placar-destaque">3 x 0</span></td>
-                            <td>Vila Nova Futsal</td>
-                        </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
+                <?php endif; ?>
             </div>
 
         </div>
 
     </div>
+
+    <div class="rodape-interno"><?php echo htmlspecialchars(texto_direitos()); ?></div>
 
 </body>
 </html>

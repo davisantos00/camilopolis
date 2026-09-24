@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once('funcoes.php');
 if (!isset($_SESSION['usuario_email'])) {
     header("Location: login.php");
     exit();
@@ -7,6 +7,7 @@ if (!isset($_SESSION['usuario_email'])) {
 
 $mensagem = "";
 $sucesso = false;
+$reserva_id = 0;
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email_usuario = $_SESSION['usuario_email'];
@@ -30,13 +31,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     try {
         $conn = new mysqli('localhost', 'root', '', 'camilopolis_db');
 
-        $sql = "INSERT INTO reservas (usuario_email, data, horario, tipo_reserva, valor) 
-                VALUES ('$email_usuario', '$data', '$horario', '$plano', '$valor')";
-        
+        $stmt = $conn->prepare("INSERT INTO reservas (usuario_email, data, horario, tipo_reserva, valor)
+                                VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssd", $email_usuario, $data, $horario, $plano, $valor);
+
         // Tenta executar o agendamento
-        $conn->query($sql);
+        $stmt->execute();
+        $reserva_id = $stmt->insert_id;
+        $stmt->close();
         $sucesso = true;
-        
+
         $conn->close();
 
     } catch (mysqli_sql_exception $e) {
@@ -127,8 +131,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .btn-promo:hover { background: #a84300; transform: scale(1.05); }
         .btn-secundario { color: var(--azul); text-decoration: underline; font-weight: bold; margin-top: 15px; display: inline-block; }
 
-        @media (max-width: 768px) { .container { flex-direction: column; } .lado-desenho, .lado-form { width: 100%; } }
+        /* Caixa de pagamento na tela de sucesso */
+        .pagamento-box { background: #f0f7ff; border: 2px solid #cfe2ff; border-radius: 12px; padding: 20px; margin-bottom: 25px; }
+        .pagamento-box p { margin: 0 0 15px 0; font-size: 16px; color: var(--azul); }
+        .pagamento-box small { display: block; margin-top: 12px; color: #666; }
+        .btn-pagar-agora { display: inline-block; background: #28a745; color: white; text-decoration: none; padding: 14px 30px; border-radius: 8px; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        .btn-pagar-agora:hover { background: #218838; transform: scale(1.03); }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; margin: 16px; }
+            .lado-desenho, .lado-form { width: 100%; }
+            .lado-desenho { padding: 24px 16px; }
+            .lado-form, .tela-sucesso { padding: 24px 20px; box-sizing: border-box; }
+            .promo-box { padding: 20px; }
+        }
     </style>
+    <link rel="stylesheet" href="comum.css">
+    <script src="comum.js" defer></script>
     <script>
         function mostrarPrecos() {
             document.getElementById('secao-precos').style.display = 'block';
@@ -136,6 +155,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </script>
 </head>
 <body>
+<?php exibir_aviso(); ?>
 
     <div class="header">
         <a href="painel.php" class="btn-voltar">← Voltar ao Painel</a>
@@ -147,7 +167,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="tela-sucesso">
                 <div class="icone-sucesso">✅</div>
                 <h2 class="titulo-sucesso">Quadra Agendada com Sucesso!</h2>
-                
+
+                <div class="pagamento-box">
+                    <p>Valor da reserva: <strong><?php echo formatar_dinheiro($valor); ?></strong></p>
+                    <a href="pagamento.php?tipo=quadra&reserva=<?php echo $reserva_id; ?>" class="btn-pagar-agora">💳 Pagar Agora</a>
+                    <small>Você também pode pagar depois em "Minhas Reservas".</small>
+                </div>
+
                 <div class="promo-box">
                     <h3>🔥 Que tal um churrasco depois do jogo?</h3>
                     <p>Aproveite nossa área de churrasqueiras para confraternizar com os amigos e o time logo após a partida. Garanta seu espaço agora mesmo!</p>
@@ -238,6 +264,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
         <?php endif; ?>
     </div>
+
+    <div class="rodape-interno"><?php echo htmlspecialchars(texto_direitos()); ?></div>
 
 </body>
 </html>

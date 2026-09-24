@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once('funcoes.php');
 include_once('conexao.php'); // Verifica se o nome do seu arquivo de conexão é esse mesmo
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -15,8 +15,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Verifica se as senhas batem
     if ($senha !== $confirma_senha) {
-        echo "<script>alert('As senhas não coincidem!'); window.location.href='cadastro.php';</script>";
-        exit();
+        redirecionar('cadastro.php', 'As senhas não coincidem!', 'erro');
     }
 
     // Verifica se o email já existe no banco
@@ -24,14 +23,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $resultado_verifica = mysqli_query($conn, $sql_verifica);
 
     if (mysqli_num_rows($resultado_verifica) > 0) {
-        echo "<script>alert('Este e-mail já está cadastrado!'); window.location.href='cadastro.php';</script>";
+        redirecionar('cadastro.php', 'Este e-mail já está cadastrado!', 'erro');
     } else {
         // Inserindo no banco de dados incluindo o telefone
-        // Importante: a tabela 'usuarios' precisa ter a coluna 'telefone' criada!
-        $sql_inserir = "INSERT INTO usuarios (nome, email, telefone, senha) VALUES ('$nome', '$email', '$telefone', '$senha')";
-        
+        // A senha é salva criptografada (nunca em texto puro)
+        $senha_hash = mysqli_real_escape_string($conn, criptografar_senha($senha));
+        $sql_inserir = "INSERT INTO usuarios (nome, email, telefone, senha) VALUES ('$nome', '$email', '$telefone', '$senha_hash')";
+
         if (mysqli_query($conn, $sql_inserir)) {
-            echo "<script>alert('Cadastro realizado com sucesso! Faça seu login.'); window.location.href='login.php';</script>";
+            redirecionar('login.php', 'Cadastro realizado com sucesso! Faça seu login.');
         } else {
             echo "Erro ao cadastrar: " . mysqli_error($conn);
         }

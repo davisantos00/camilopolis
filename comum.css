@@ -1,0 +1,63 @@
+/* =========================================================
+   comum.css - Estilos compartilhados por todas as páginas
+   (avisos, botão de mostrar senha e ajustes para celular)
+   ========================================================= */
+
+html { -webkit-text-size-adjust: 100%; }
+img, iframe { max-width: 100%; }
+
+/* ---------- Avisos (substituem o alert() do navegador) ---------- */
+.aviso-toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 3000; display: flex; align-items: center; gap: 12px;
+    width: calc(100% - 32px); max-width: 460px; box-sizing: border-box;
+    padding: 14px 16px; border-radius: 12px; background: #ffffff;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25); border-left: 6px solid #0A3D73;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 15px; color: #2c3e50;
+    animation: avisoEntrada 0.35s ease;
+}
+.aviso-sucesso { border-left-color: #28a745; }
+.aviso-erro { border-left-color: #dc3545; }
+.aviso-info { border-left-color: #FFC107; }
+.aviso-icone { font-size: 20px; line-height: 1; }
+.aviso-texto { flex: 1; line-height: 1.4; }
+.aviso-fechar {
+    background: none; border: none; font-size: 24px; line-height: 1; color: #888;
+    cursor: pointer; padding: 0 4px;
+}
+.aviso-fechar:hover { color: #333; }
+.aviso-saindo { animation: avisoSaida 0.3s ease forwards; }
+
+@keyframes avisoEntrada { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes avisoSaida { to { opacity: 0; transform: translate(-50%, -20px); } }
+
+/* ---------- Botão de mostrar/ocultar senha ---------- */
+.campo-senha { position: relative; display: block; }
+.campo-senha input { padding-right: 46px !important; }
+.btn-olho {
+    position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+    width: 36px; height: 36px; border: none; background: transparent; cursor: pointer;
+    border-radius: 6px; font-size: 18px; line-height: 1; color: #666;
+    display: flex; align-items: center; justify-content: center;
+}
+.btn-olho:hover { background: rgba(10, 61, 115, 0.08); }
+.btn-olho:focus-visible { outline: 2px solid #0A3D73; }
+
+/* ---------- Telas de login / cadastro / recuperação ---------- */
+body.pagina-acesso { min-height: 100vh; height: auto; padding: 24px 16px; box-sizing: border-box; }
+body.pagina-acesso .overlay { position: fixed; }
+
+/* ---------- Rodapé simples das páginas internas ---------- */
+.rodape-interno { text-align: center; font-size: 12px; color: #94a3b8; padding: 20px 16px 30px; }
+
+/* ---------- Ajustes para celular ---------- */
+@media (max-width: 600px) {
+    /* 16px evita o zoom automático do iPhone ao tocar nos campos */
+    input, select, textarea { font-size: 16px !important; }
+
+    body.pagina-acesso { padding: 16px; }
+    .login-card, .cadastro-card { padding: 28px 20px !important; }
+
+    .header { padding: 12px 16px !important; gap: 10px; }
+    .usuario-badge { font-size: 12px !important; max-width: 55vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}

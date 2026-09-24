@@ -1,23 +1,31 @@
 <?php
-session_start();
+require_once('funcoes.php');
 @include_once('conexao.php');
 
 $mensagem = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $senha = $_POST['senha']; 
+    $senha = $_POST['senha'];
 
     $sql = "SELECT * FROM usuarios WHERE email = '$email'";
     $resultado = mysqli_query($conn, $sql);
-    
+
     if (mysqli_num_rows($resultado) > 0) {
         $dados = mysqli_fetch_assoc($resultado);
-        if ($senha === $dados['senha']) {
+        if (senha_confere($senha, $dados['senha'])) {
+            // Senhas antigas (texto puro) são criptografadas no primeiro login
+            if (!senha_esta_criptografada($dados['senha'])) {
+                $stmt = $conn->prepare("UPDATE usuarios SET senha = ? WHERE id = ?");
+                $senha_hash = criptografar_senha($senha);
+                $stmt->bind_param("si", $senha_hash, $dados['id']);
+                $stmt->execute();
+                $stmt->close();
+            }
             $_SESSION['usuario_nome'] = $dados['nome'];
             $_SESSION['usuario_email'] = $dados['email'];
             header("Location: painel.php");
-            exit(); 
+            exit();
         } else {
             $mensagem = "<p style='color: #ffcc00; font-weight:bold; text-align:center;'>Senha incorreta!</p>";
         }
@@ -30,6 +38,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Associação Amigos de Camilópolis</title>
     <style>
         :root { --azul-escuro: #0A3D73; --azul-claro: #1A5B9C; --amarelo: #FFC107; --branco: #FFFFFF; }
@@ -74,8 +83,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .opcoes a { color: var(--azul-claro); text-decoration: none; font-weight: bold; display: block; margin-bottom: 8px; }
         .opcoes a:hover { text-decoration: underline; }
     </style>
+    <link rel="stylesheet" href="comum.css">
+    <script src="comum.js" defer></script>
 </head>
-<body>
+<body class="pagina-acesso">
+<?php exibir_aviso(); ?>
 <div class="overlay"></div>
 
 <div class="login-card">

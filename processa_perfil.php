@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once('funcoes.php');
 include_once('conexao.php');
 
 if (!isset($_SESSION['usuario_email'])) {
@@ -21,9 +21,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (mysqli_query($conn, $sql)) {
             $_SESSION['usuario_nome'] = $novo_nome; // Atualiza a sessão
             $_SESSION['usuario_email'] = $novo_email;
-            echo "<script>alert('Dados atualizados com sucesso!'); window.location.href='meu_perfil.php';</script>";
+            redirecionar('meu_perfil.php', 'Dados atualizados com sucesso!', 'sucesso');
         } else {
-            echo "<script>alert('Erro ao atualizar.'); window.location.href='meu_perfil.php';</script>";
+            redirecionar('meu_perfil.php', 'Erro ao atualizar.', 'erro');
         }
     }
 
@@ -38,19 +38,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $dados_usuario = mysqli_fetch_assoc($resultado_verifica);
 
         // Verifica se a senha que ele digitou no campo "Senha Atual" bate com a do banco
-        if ($dados_usuario['senha'] == $senha_atual) {
+        if (senha_confere($senha_atual, $dados_usuario['senha'])) {
             
             // Se estiver correta, atualiza para a nova senha
-            $sql = "UPDATE usuarios SET senha = '$nova_senha' WHERE email = '$email_atual'";
+            $nova_senha_hash = mysqli_real_escape_string($conn, criptografar_senha($nova_senha));
+            $sql = "UPDATE usuarios SET senha = '$nova_senha_hash' WHERE email = '$email_atual'";
             if (mysqli_query($conn, $sql)) {
-                echo "<script>alert('Senha alterada com sucesso!'); window.location.href='meu_perfil.php';</script>";
+                redirecionar('meu_perfil.php', 'Senha alterada com sucesso!', 'sucesso');
             } else {
-                echo "<script>alert('Erro ao alterar senha no banco de dados.'); window.location.href='meu_perfil.php';</script>";
+                redirecionar('meu_perfil.php', 'Erro ao alterar senha no banco de dados.', 'erro');
             }
 
         } else {
             // Se a senha atual estiver errada, bloqueia a ação
-            echo "<script>alert('ERRO: A senha atual está incorreta. Nenhuma alteração foi feita.'); window.location.href='meu_perfil.php';</script>";
+            redirecionar('meu_perfil.php', 'ERRO: A senha atual está incorreta. Nenhuma alteração foi feita.', 'erro');
         }
     }
 
@@ -63,16 +64,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Depois exclui o usuário
         $sql = "DELETE FROM usuarios WHERE email = '$email_atual'";
         if (mysqli_query($conn, $sql)) {
-            session_destroy(); // Limpa a sessão
-            echo "<script>alert('Conta apagada com sucesso. Sentiremos sua falta!'); window.location.href='index.php';</script>";
+            session_unset(); // Limpa a sessão (mantém só o aviso de despedida)
+            redirecionar('index.php', 'Conta apagada com sucesso. Sentiremos sua falta!', 'sucesso');
         } else {
-            echo "<script>alert('Erro ao apagar conta.'); window.location.href='meu_perfil.php';</script>";
+            redirecionar('meu_perfil.php', 'Erro ao apagar conta.', 'erro');
         }
     }
     
     // 4. ALTERAR FOTO (Requer banco de dados modificado)
     elseif ($acao == "alterar_foto") {
-        echo "<script>alert('Para o upload de fotos funcionar, precisamos adicionar uma coluna de foto no banco de dados. Funcionalidade em construção!'); window.location.href='meu_perfil.php';</script>";
+        redirecionar('meu_perfil.php', 'Para o upload de fotos funcionar, precisamos adicionar uma coluna de foto no banco de dados. Funcionalidade em construção!', 'info');
     }
 }
 ?>

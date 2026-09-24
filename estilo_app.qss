@@ -1,0 +1,195 @@
+/* =========================================================
+   estilo_app.qss - "CSS" do aplicativo administrativo
+   Mesmas cores do site: azul #072a50 / #0A3D73 e amarelo #FFC107
+   ========================================================= */
+
+QWidget {
+    font-family: "Segoe UI";
+    font-size: 10pt;
+    color: #2c3e50;
+}
+
+QMainWindow, QDialog {
+    background: #f4f7f6;
+}
+
+/* ---------- Tela de login ---------- */
+QFrame[classe="marca"] {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #072a50, stop:1 #0A3D73);
+}
+QFrame[classe="marca"] QLabel {
+    color: #FFC107;
+    background: transparent;
+}
+QLabel#lbl_logo, QLabel#lbl_logo_topo {
+    border: 3px solid #FFC107;
+    border-radius: 12px;
+    background: white;
+}
+
+/* ---------- Títulos e cartões de números ---------- */
+QLabel[classe="titulo"] {
+    font-size: 20pt;
+    font-weight: 800;
+    color: #072a50;
+}
+QLabel[classe="subtitulo"] {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #0A3D73;
+}
+QLabel[classe="card"] {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-left: 6px solid #FFC107;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 11pt;
+    color: #0A3D73;
+}
+
+/* ---------- Abas ---------- */
+QTabWidget::pane {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    background: white;
+    top: -1px;
+}
+QTabBar::tab {
+    background: #e9ecef;
+    color: #0A3D73;
+    padding: 10px 20px;
+    margin-right: 4px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    font-weight: bold;
+}
+QTabBar::tab:selected {
+    background: #0A3D73;
+    color: white;
+}
+QTabBar::tab:hover:!selected {
+    background: #dbe7f5;
+}
+
+/* ---------- Botões ---------- */
+QPushButton {
+    background: #0A3D73;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-weight: bold;
+}
+QPushButton:hover {
+    background: #072a50;
+}
+QPushButton:pressed {
+    background: #05203d;
+}
+QPushButton:disabled {
+    background: #b8c4d1;
+    color: #eef2f5;
+}
+QPushButton[classe="secundario"] {
+    background: white;
+    color: #0A3D73;
+    border: 2px solid #0A3D73;
+}
+QPushButton[classe="secundario"]:hover {
+    background: #eef4fc;
+}
+QPushButton[classe="sucesso"] {
+    background: #28a745;
+}
+QPushButton[classe="sucesso"]:hover {
+    background: #218838;
+}
+QPushButton[classe="perigo"] {
+    background: #dc3545;
+}
+QPushButton[classe="perigo"]:hover {
+    background: #b02a37;
+}
+QPushButton#btn_esqueceu_senha {
+    background: transparent;
+    color: #0A3D73;
+    text-decoration: underline;
+}
+QPushButton#btn_esqueceu_senha:hover {
+    color: #d35400;
+}
+
+/* ---------- Campos ---------- */
+QLineEdit, QTextEdit, QTextBrowser, QSpinBox, QDateEdit, QComboBox {
+    background: white;
+    border: 1px solid #cfd8e3;
+    border-radius: 6px;
+    padding: 6px 8px;
+    selection-background-color: #FFC107;
+    selection-color: #072a50;
+}
+QLineEdit:focus, QTextEdit:focus, QSpinBox:focus, QDateEdit:focus, QComboBox:focus {
+    border: 2px solid #FFC107;
+}
+QTextBrowser {
+    background: #f8fafc;
+}
+
+/* ---------- Tabelas ---------- */
+QTableWidget {
+    background: white;
+    alternate-background-color: #f8fafc;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    gridline-color: #eef2f5;
+    selection-background-color: #FFC107;
+    selection-color: #072a50;
+}
+QHeaderView::section {
+    background: #0A3D73;
+    color: white;
+    padding: 8px;
+    border: none;
+    border-right: 1px solid #072a50;
+    font-weight: bold;
+}
+QTableCornerButton::section {
+    background: #0A3D73;
+    border: none;
+}
+
+/* ---------- Barra de rolagem ---------- */
+QScrollBar:vertical {
+    background: #f1f3f5;
+    width: 12px;
+    margin: 0;
+}
+QScrollBar::handle:vertical {
+    background: #b8c4d1;
+    border-radius: 6px;
+    min-height: 30px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #0A3D73;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+/* ---------- Barras superior e inferior ---------- */
+QMenuBar {
+    background: #072a50;
+}
+QStatusBar {
+    background: #072a50;
+    color: #cbd5e1;
+}
+QStatusBar QLabel {
+    color: #cbd5e1;
+    padding: 0 10px;
+}
+
+QMessageBox QPushButton {
+    min-width: 80px;
+}

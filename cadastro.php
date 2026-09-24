@@ -1,10 +1,12 @@
 <?php
 // A lógica pesada vai ficar no arquivo processa_cadastro.php
+require_once('funcoes.php');
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro de Sócio - Associação Amigos de Camilópolis</title>
     <style>
         :root { --azul-escuro: #0A3D73; --azul-claro: #1A5B9C; --amarelo: #FFC107; --branco: #FFFFFF; }
@@ -49,8 +51,11 @@
         .footer-link a { color: var(--azul-claro); text-decoration: none; font-weight: bold; }
         .footer-link a:hover { text-decoration: underline; }
     </style>
+    <link rel="stylesheet" href="comum.css">
+    <script src="comum.js" defer></script>
 </head>
-<body>
+<body class="pagina-acesso">
+<?php exibir_aviso(); ?>
 <div class="overlay"></div>
 
 <div class="cadastro-card">

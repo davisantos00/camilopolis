@@ -1,3 +1,4 @@
+<?php require_once('funcoes.php'); ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -101,16 +102,49 @@
         .footer-socials a { display: inline-block; color: var(--branco); font-size: 24px; margin: 10px 12px; transition: 0.3s; }
         .footer-socials a:hover { color: var(--amarelo); transform: translateY(-3px); }
 
+        /* Botão do menu no celular (escondido no computador) */
+        .menu-toggle { display: none; background: none; border: 2px solid rgba(255, 193, 7, 0.6); color: var(--amarelo); font-size: 20px; width: 44px; height: 44px; border-radius: 10px; cursor: pointer; }
+
         @media (max-width: 768px) {
-            .nav-links { display: none; }
-            .hero h1 { font-size: 34px; }
-            .socio-banner { flex-direction: column; text-align: center; }
-            .section { padding: 60px 5%; }
+            .navbar { padding: 10px 16px; }
+            .nav-logo { height: 40px; width: 40px; }
+            .nav-title { font-size: 16px; }
+            .menu-toggle { display: flex; align-items: center; justify-content: center; }
+            .nav-links { display: none; position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; align-items: stretch; gap: 0; background: var(--azul-principal); padding: 8px 16px 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+            .nav-links.aberto { display: flex; }
+            .nav-links a { padding: 14px 4px; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+            .nav-links a.btn-login { margin-top: 12px; text-align: center; border-bottom: none; }
+
+            .hero { min-height: auto; padding: 110px 16px 60px 16px; }
+            .hero h1 { font-size: 30px; }
+            .hero p { font-size: 16px; margin-bottom: 28px; }
+            .hero-btns { flex-direction: column; width: 100%; max-width: 360px; }
+            .hero-btns a { text-align: center; }
+
+            .section { padding: 50px 16px; }
+            .section-title { font-size: 26px; }
+            .sobre-content { padding: 24px 20px; }
+            .grid-3, .grid-4 { grid-template-columns: 1fr; gap: 16px; }
+
+            .socio-banner { flex-direction: column; text-align: center; margin: 30px 16px; padding: 30px 20px; }
+            .socio-info h2 { font-size: 24px; }
+            .socio-info ul { text-align: left; }
+            .socio-price { min-width: 0; width: 100%; box-sizing: border-box; }
+
+            .mapa-box { padding: 12px; }
+            .mapa-box iframe { height: 300px; }
+
+            .whatsapp-float, .instagram-float { width: 54px; height: 54px; font-size: 27px; right: 16px; }
+            .whatsapp-float { bottom: 16px; }
+            .instagram-float { bottom: 80px; }
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="comum.css">
+    <script src="comum.js" defer></script>
 </head>
 <body>
+<?php exibir_aviso(); ?>
 
     <!-- NAVEGAÇÃO -->
     <nav class="navbar">
@@ -121,7 +155,8 @@
                 <span class="nav-subtitle">Desde 1957</span>
             </div>
         </div>
-        <div class="nav-links">
+        <button type="button" class="menu-toggle" aria-label="Abrir menu" aria-expanded="false" onclick="alternarMenu(this)"><i class="fas fa-bars"></i></button>
+        <div class="nav-links" id="menu-principal">
             <a href="#sobre">História</a>
             <a href="#atividades">Atividades</a>
             <a href="#servicos">Saúde & Bem-Estar</a>
@@ -297,8 +332,26 @@
             <a href="https://www.instagram.com/associacao.amigosdecamilopolis/" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
             <a href="https://wa.me/551144613996" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
         </div>
-        <p style="margin-top: 15px; font-size: 13px; color: #94a3b8;">© <?php echo date("Y"); ?> - Todos os direitos reservados.</p>
+        <p style="margin-top: 15px; font-size: 13px; color: #94a3b8;"><?php echo htmlspecialchars(texto_direitos()); ?></p>
     </footer>
+
+    <script>
+        // Abre/fecha o menu no celular e fecha ao tocar em um link
+        function alternarMenu(botao) {
+            var menu = document.getElementById('menu-principal');
+            var aberto = menu.classList.toggle('aberto');
+            botao.setAttribute('aria-expanded', aberto);
+            botao.innerHTML = aberto ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+        }
+        document.querySelectorAll('#menu-principal a').forEach(function (link) {
+            link.addEventListener('click', function () {
+                var menu = document.getElementById('menu-principal');
+                if (menu.classList.contains('aberto')) {
+                    alternarMenu(document.querySelector('.menu-toggle'));
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>

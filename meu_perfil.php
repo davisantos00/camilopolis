@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once('funcoes.php');
 if (!isset($_SESSION['usuario_email'])) {
     header("Location: login.php");
     exit();
@@ -15,6 +15,8 @@ if ($conn->connect_error) {
     die("Erro de conexão: " . $conn->connect_error);
 }
 
+garantir_estrutura($conn);
+
 // Garante que a coluna 'foto' existe na tabela usuarios sem dar erro se já existir
 $conn->query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS foto VARCHAR(255)");
 
@@ -28,10 +30,15 @@ if (isset($_GET['excluir_conta']) && $_GET['excluir_conta'] == '1') {
     $stmt_del->bind_param("s", $email_usuario);
     $stmt_del->execute();
     $stmt_del->close();
-    
-    session_destroy();
-    echo "<script>alert('Sua conta foi excluída permanentemente.'); window.location.href='login.php';</script>";
-    exit();
+
+    // Pagamentos ainda não feitos deixam de existir junto com a conta
+    $stmt_pg = $conn->prepare("DELETE FROM pagamentos WHERE usuario_email = ? AND status = 'pendente'");
+    $stmt_pg->bind_param("s", $email_usuario);
+    $stmt_pg->execute();
+    $stmt_pg->close();
+
+    session_unset();
+    redirecionar('login.php', 'Sua conta foi excluída permanentemente.', 'info');
 }
 
 // Processamento de Atualizações do Perfil, Foto ou Senha
@@ -212,8 +219,12 @@ $foto_perfil = $usuario['foto'] ?? '';
 
         @media (max-width: 768px) {
             .painel-grid { grid-template-columns: 1fr; }
+            .container { margin: 20px auto; padding: 0 16px; }
+            .card-painel { padding: 20px; }
         }
     </style>
+    <link rel="stylesheet" href="comum.css">
+    <script src="comum.js" defer></script>
     <script>
         function abrirModalExclusao() {
             document.getElementById('modalExclusao').style.display = 'flex';
@@ -224,6 +235,7 @@ $foto_perfil = $usuario['foto'] ?? '';
     </script>
 </head>
 <body>
+<?php exibir_aviso(); ?>
 
     <div class="header">
         <a href="painel.php" class="btn-voltar">← Voltar ao Painel</a>
@@ -341,6 +353,8 @@ $foto_perfil = $usuario['foto'] ?? '';
             </div>
         </div>
     </div>
+
+    <div class="rodape-interno"><?php echo htmlspecialchars(texto_direitos()); ?></div>
 
 </body>
 </html>
