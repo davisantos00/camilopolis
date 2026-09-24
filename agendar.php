@@ -56,6 +56,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $mensagem = "<div class='erro'>Erro de conexão: " . $e->getMessage() . "</div>";
     }
 }
+
+// Horários já reservados de hoje em diante, para a tela mostrar só os que estão livres
+$horarios_ocupados = [];
+if (!$sucesso) {
+    try {
+        $conn = conectar_banco();
+        $resultado = $conn->query("SELECT data, horario FROM reservas WHERE data >= CURDATE()");
+        while ($linha = $resultado->fetch_assoc()) {
+            $horarios_ocupados[$linha['data']][] = $linha['horario'];
+        }
+        $conn->close();
+    } catch (Exception $e) {
+        // Sem a lista, todos os horários aparecem e o banco continua impedindo reservas repetidas
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -98,9 +113,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         /* Botões de Horário */
         .horarios-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .horarios-grid input[type="radio"] { display: none; }
-        .horarios-grid label.btn-horario { background: white; border: 2px solid var(--borda); padding: 12px; text-align: center; border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: bold; color: #666; font-size: 15px; }
+        .horarios-grid label.btn-horario { display: block; background: white; border: 2px solid var(--borda); padding: 12px; text-align: center; border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: bold; color: #666; font-size: 15px; }
         .horarios-grid label.btn-horario:hover { border-color: var(--azul); color: var(--azul); background: #f0f4f8; }
         .horarios-grid input[type="radio"]:checked + label.btn-horario { background: var(--azul); color: white; border-color: var(--azul); box-shadow: 0 4px 10px rgba(10, 61, 115, 0.3); transform: scale(1.02); }
+        .dica-horarios { background: #f0f4f8; color: var(--azul); padding: 12px 15px; border-radius: 8px; margin: 0; font-size: 14px; }
         
         /* Seção de Preços e Planos (Oculta até selecionar o horário) */
         #secao-precos { display: none; margin-top: 25px; padding-top: 20px; border-top: 2px dashed var(--borda); animation: fadeIn 0.4s ease; }
@@ -149,9 +165,62 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link rel="stylesheet" href="comum.css">
     <script src="comum.js" defer></script>
     <script>
+        // Horários já reservados, por data (vem do banco)
+        const HORARIOS_OCUPADOS = <?php echo json_encode($horarios_ocupados, JSON_FORCE_OBJECT); ?>;
+
         function mostrarPrecos() {
             document.getElementById('secao-precos').style.display = 'block';
         }
+
+        function dataDeHoje() {
+            const agora = new Date();
+            const mes = String(agora.getMonth() + 1).padStart(2, '0');
+            const dia = String(agora.getDate()).padStart(2, '0');
+            return agora.getFullYear() + '-' + mes + '-' + dia;
+        }
+
+        // Mostra só os horários livres da data escolhida (esconde os reservados e os que já passaram hoje)
+        function atualizarHorarios() {
+            const data = document.getElementById('campo-data').value;
+            const ocupados = Object.values(HORARIOS_OCUPADOS[data] || {});
+            const horaAtual = new Date().getHours();
+            let livres = 0;
+
+            document.querySelectorAll('.opcao-horario').forEach(function (opcao) {
+                const horario = opcao.dataset.horario;
+                const jaPassou = data === dataDeHoje() && parseInt(horario, 10) <= horaAtual;
+                const disponivel = data !== '' && !ocupados.includes(horario) && !jaPassou;
+                opcao.style.display = disponivel ? '' : 'none';
+                if (disponivel) {
+                    livres++;
+                } else {
+                    opcao.querySelector('input').checked = false;
+                }
+            });
+
+            const aviso = document.getElementById('aviso-horarios');
+            if (data === '') {
+                aviso.textContent = 'Escolha uma data para ver os horários disponíveis.';
+            } else if (livres === 0) {
+                aviso.textContent = 'Não há horários livres nesta data. Por favor, escolha outro dia.';
+            } else {
+                aviso.textContent = '';
+            }
+            aviso.style.display = aviso.textContent ? '' : 'none';
+            document.getElementById('grade-horarios').style.display = livres ? '' : 'none';
+
+            if (!document.querySelector('input[name="horario"]:checked')) {
+                document.getElementById('secao-precos').style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const campoData = document.getElementById('campo-data');
+            if (campoData) {
+                campoData.addEventListener('change', atualizarHorarios);
+                atualizarHorarios();
+            }
+        });
     </script>
 </head>
 <body>
@@ -200,23 +269,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <form method="POST" action="">
                     <div class="form-group">
                         <label class="titulo-campo">📅 Escolha a Data:</label>
-                        <input type="date" name="data" required min="<?php echo date('Y-m-d'); ?>">
+                        <input type="date" name="data" id="campo-data" required min="<?php echo date('Y-m-d'); ?>">
                     </div>
-                    
+
                     <div class="form-group">
                         <label class="titulo-campo">⏰ Selecione o Horário:</label>
-                        <div class="horarios-grid">
-                            <input type="radio" name="horario" id="h18" value="18:00" required onclick="mostrarPrecos()">
-                            <label for="h18" class="btn-horario">18:00 às 19:00</label>
-                            
-                            <input type="radio" name="horario" id="h19" value="19:00" onclick="mostrarPrecos()">
-                            <label for="h19" class="btn-horario">19:00 às 20:00</label>
-                            
-                            <input type="radio" name="horario" id="h20" value="20:00" onclick="mostrarPrecos()">
-                            <label for="h20" class="btn-horario">20:00 às 21:00</label>
-                            
-                            <input type="radio" name="horario" id="h21" value="21:00" onclick="mostrarPrecos()">
-                            <label for="h21" class="btn-horario">21:00 às 22:00</label>
+                        <p id="aviso-horarios" class="dica-horarios">Escolha uma data para ver os horários disponíveis.</p>
+                        <div class="horarios-grid" id="grade-horarios">
+                            <?php foreach (['18:00', '19:00', '20:00', '21:00'] as $indice => $horario): ?>
+                                <?php $id_horario = 'h' . substr($horario, 0, 2); ?>
+                                <div class="opcao-horario" data-horario="<?php echo $horario; ?>">
+                                    <input type="radio" name="horario" id="<?php echo $id_horario; ?>" value="<?php echo $horario; ?>" <?php echo $indice === 0 ? 'required' : ''; ?> onclick="mostrarPrecos()">
+                                    <label for="<?php echo $id_horario; ?>" class="btn-horario"><?php echo $horario; ?> às <?php echo sprintf('%02d:00', (int) $horario + 1); ?></label>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
                     </div>
 

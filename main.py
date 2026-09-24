@@ -132,10 +132,77 @@ def formatar_dinheiro(valor):
     return "R$ " + f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+def texto_cartao(titulo, valor):
+    """Texto dos cartões de totais: título pequeno e o número em destaque."""
+    return (f"<span style='font-size:10pt; color:#5a6b7d;'>{titulo}</span><br>"
+            f"<span style='font-size:18pt; font-weight:800; color:#072a50;'>{valor}</span>")
+
+
 def formatar_data(data, com_hora=False):
     if data is None:
         return ""
     return data.strftime("%d/%m/%Y %H:%M" if com_hora else "%d/%m/%Y")
+
+
+class DialogoCliente(QtWidgets.QDialog):
+    """Janela para cadastrar um cliente novo ou editar um existente."""
+
+    def __init__(self, pai, dados=None):
+        super().__init__(pai)
+        self.editando = dados is not None
+        self.setWindowTitle("Editar Cliente" if self.editando else "Novo Cliente")
+        self.setMinimumWidth(500)
+
+        self.txt_nome = QtWidgets.QLineEdit()
+        self.txt_email = QtWidgets.QLineEdit()
+        self.txt_telefone = QtWidgets.QLineEdit()
+        self.txt_telefone.setPlaceholderText("(11) 90000-0000")
+        self.txt_senha = QtWidgets.QLineEdit()
+        self.txt_senha.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
+        if self.editando:
+            self.txt_nome.setText(dados[0])
+            self.txt_email.setText(dados[1])
+            self.txt_telefone.setText(dados[2] or "")
+            self.txt_senha.setPlaceholderText("Deixe em branco para manter a senha atual")
+        else:
+            self.txt_senha.setPlaceholderText("Senha de acesso ao site")
+
+        formulario = QtWidgets.QFormLayout()
+        formulario.setSpacing(10)
+        formulario.addRow("Nome completo:", self.txt_nome)
+        formulario.addRow("E-mail:", self.txt_email)
+        formulario.addRow("Telefone:", self.txt_telefone)
+        formulario.addRow("Nova senha:" if self.editando else "Senha:", self.txt_senha)
+
+        botoes = QtWidgets.QDialogButtonBox()
+        botoes.addButton("Salvar", QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole).setProperty("classe", "sucesso")
+        botoes.addButton("Cancelar", QtWidgets.QDialogButtonBox.ButtonRole.RejectRole).setProperty("classe", "secundario")
+        botoes.accepted.connect(self.validar)
+        botoes.rejected.connect(self.reject)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.addLayout(formulario)
+        layout.addSpacing(10)
+        layout.addWidget(botoes)
+
+    def validar(self):
+        nome = self.txt_nome.text().strip()
+        email = self.txt_email.text().strip()
+        if not nome or "@" not in email:
+            QtWidgets.QMessageBox.warning(self, "Aviso", "Preencha o nome e um e-mail válido!")
+            return
+        if not self.editando and not self.txt_senha.text():
+            QtWidgets.QMessageBox.warning(self, "Aviso", "Defina uma senha para o cliente!")
+            return
+        self.accept()
+
+    def abrir(self):
+        """Mostra a janela e devolve (nome, email, telefone, senha) ou None se cancelar."""
+        if self.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return None
+        return (self.txt_nome.text().strip(), self.txt_email.text().strip(),
+                self.txt_telefone.text().strip(), self.txt_senha.text())
 
 
 class PainelAdmin:
@@ -159,6 +226,11 @@ class PainelAdmin:
         self.ui.btn_pesquisar_cliente.clicked.connect(self.pesquisar_cliente)
         self.ui.txt_busca_cliente.returnPressed.connect(self.pesquisar_cliente)
         self.ui.btn_atualizar_reservas.clicked.connect(self.carregar_reservas_detalhadas)
+        self.ui.btn_novo_cliente.clicked.connect(self.novo_cliente)
+        self.ui.btn_editar_cliente.clicked.connect(self.editar_cliente)
+        self.ui.tableWidget_usuarios.doubleClicked.connect(self.editar_cliente)
+        self.ui.btn_excluir.clicked.connect(self.excluir_cliente)
+        self.ui.btn_cancelar_reserva.clicked.connect(self.cancelar_reserva)
 
         # Carrega os dados nas tabelas
         self.carregar_clientes()
@@ -200,7 +272,7 @@ class PainelAdmin:
         cartoes.setSpacing(16)
         for cartao in (ui.lbl_total_clientes, ui.lbl_total_quadra, ui.lbl_total_churras, self.lbl_total_recebido):
             cartao.setProperty("classe", "card")
-            cartao.setMinimumHeight(60)
+            cartao.setMinimumHeight(84)
             cartoes.addWidget(cartao, 1)
 
         layout = QtWidgets.QVBoxLayout(central)
@@ -241,9 +313,17 @@ class PainelAdmin:
         configurar_tabela(ui.tableWidget_usuarios)
         configurar_tabela(ui.tableWidget_reservas)
 
+        # O "&" do nome da aba no .ui virava atalho de teclado e sumia do texto
+        ui.tabWidget.setTabText(ui.tabWidget.indexOf(ui.tab), "Gestão de Clientes")
+
         # Direitos reservados no rodapé
         rodape = QtWidgets.QLabel(f"© {QtCore.QDate.currentDate().year()} {NOME_ASSOCIACAO} - Todos os direitos reservados.")
         ui.statusBar().addPermanentWidget(rodape)
+
+        # As classes de estilo foram definidas depois de a tela carregar: reaplica o estilo em tudo
+        for widget in ui.findChildren(QtWidgets.QWidget):
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
 
     def carregar_totais(self):
         try:
@@ -251,10 +331,10 @@ class PainelAdmin:
             _, quadra = consultar("SELECT COUNT(*) FROM reservas")
             _, churras = consultar("SELECT COUNT(*) FROM reservas_churrasqueira")
             _, recebido = consultar("SELECT COALESCE(SUM(valor), 0) FROM pagamentos WHERE status = 'pago'")
-            self.ui.lbl_total_clientes.setText(f"👥 Clientes\n{clientes[0][0]}")
-            self.ui.lbl_total_quadra.setText(f"⚽ Reservas de Quadra\n{quadra[0][0]}")
-            self.ui.lbl_total_churras.setText(f"🍖 Reservas de Churrasqueira\n{churras[0][0]}")
-            self.lbl_total_recebido.setText(f"💰 Total Recebido\n{formatar_dinheiro(recebido[0][0])}")
+            self.ui.lbl_total_clientes.setText(texto_cartao("👥 Clientes", clientes[0][0]))
+            self.ui.lbl_total_quadra.setText(texto_cartao("⚽ Reservas de Quadra", quadra[0][0]))
+            self.ui.lbl_total_churras.setText(texto_cartao("🍖 Reservas de Churrasqueira", churras[0][0]))
+            self.lbl_total_recebido.setText(texto_cartao("💰 Total Recebido", formatar_dinheiro(recebido[0][0])))
         except Exception as e:
             QtWidgets.QMessageBox.critical(self.ui, "Erro ao Carregar Totais", f"Detalhes:\n{e}")
 
@@ -263,24 +343,98 @@ class PainelAdmin:
     # ------------------------------------------
     def carregar_clientes(self):
         try:
-            # Puxa todas as colunas da tabela de usuários sem risco de erro de nome de coluna
-            colunas, resultados = consultar("SELECT * FROM usuarios")
-
-            self.ui.tableWidget_usuarios.setRowCount(len(resultados))
-            self.ui.tableWidget_usuarios.setColumnCount(len(colunas))
-            self.ui.tableWidget_usuarios.setHorizontalHeaderLabels(colunas)
-
-            for row_idx, row_data in enumerate(resultados):
-                for col_idx, data in enumerate(row_data):
-                    if colunas[col_idx] == "senha":
-                        texto = MASCARA_SENHA  # A senha nunca aparece na tela
-                    else:
-                        texto = str(data) if data is not None else "Não Informado"
-                    self.ui.tableWidget_usuarios.setItem(row_idx, col_idx, QtWidgets.QTableWidgetItem(texto))
-
-            self.ui.tableWidget_usuarios.resizeColumnsToContents()
+            # Só as colunas úteis para o administrador (senha e códigos de recuperação ficam de fora)
+            _, resultados = consultar("SELECT id, nome, email, telefone, foto FROM usuarios ORDER BY nome")
         except Exception as e:
             QtWidgets.QMessageBox.critical(self.ui, "Erro ao Carregar Clientes", f"Detalhes:\n{e}")
+            return
+        linhas = [[id_usuario, nome, email, telefone or "Não informado", "Sim" if foto else "Não"]
+                  for id_usuario, nome, email, telefone, foto in resultados]
+        preencher_tabela(self.ui.tableWidget_usuarios, ["ID", "Nome", "E-mail", "Telefone", "Foto de perfil"], linhas)
+        self.pesquisar_cliente()
+
+    def novo_cliente(self):
+        dados = DialogoCliente(self.ui).abrir()
+        if dados is None:
+            return
+        nome, email, telefone, senha = dados
+        try:
+            executar("INSERT INTO usuarios (nome, email, telefone, senha) VALUES (%s, %s, %s, %s)",
+                     (nome, email, telefone, criptografar_senha(senha)))
+        except mysql.connector.IntegrityError:
+            QtWidgets.QMessageBox.warning(self.ui, "Aviso", "Já existe um cliente com este e-mail!")
+            return
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self.ui, "Erro", f"Erro ao cadastrar cliente:\n{e}")
+            return
+        self.ui.statusBar().showMessage("Cliente cadastrado!", 5000)
+        self.carregar_clientes()
+        self.carregar_totais()
+
+    def editar_cliente(self):
+        id_cliente = id_selecionado(self.ui.tableWidget_usuarios)
+        if id_cliente is None:
+            QtWidgets.QMessageBox.warning(self.ui, "Aviso", "Selecione um cliente na lista!")
+            return
+        try:
+            _, resultado = consultar("SELECT nome, email, telefone FROM usuarios WHERE id = %s", (id_cliente,))
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self.ui, "Erro", f"Erro ao buscar cliente:\n{e}")
+            return
+        if not resultado:
+            self.carregar_clientes()
+            return
+        email_antigo = resultado[0][1]
+
+        dados = DialogoCliente(self.ui, resultado[0]).abrir()
+        if dados is None:
+            return
+        nome, email, telefone, senha = dados
+        try:
+            executar("UPDATE usuarios SET nome = %s, email = %s, telefone = %s WHERE id = %s",
+                     (nome, email, telefone, id_cliente))
+            if senha:
+                executar("UPDATE usuarios SET senha = %s WHERE id = %s", (criptografar_senha(senha), id_cliente))
+            if email != email_antigo:
+                # As reservas, pagamentos e mensagens são ligados ao e-mail: acompanham a troca
+                for tabela in ("reservas", "reservas_churrasqueira", "pagamentos", "suporte_mensagens"):
+                    executar(f"UPDATE {tabela} SET usuario_email = %s WHERE usuario_email = %s", (email, email_antigo))
+        except mysql.connector.IntegrityError:
+            QtWidgets.QMessageBox.warning(self.ui, "Aviso", "Já existe outro cliente com este e-mail!")
+            return
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self.ui, "Erro", f"Erro ao salvar cliente:\n{e}")
+            return
+        self.ui.statusBar().showMessage("Dados do cliente atualizados!", 5000)
+        self.carregar_clientes()
+        self.carregar_reservas_detalhadas()
+
+    def excluir_cliente(self):
+        id_cliente = id_selecionado(self.ui.tableWidget_usuarios)
+        if id_cliente is None:
+            QtWidgets.QMessageBox.warning(self.ui, "Aviso", "Selecione um cliente na lista!")
+            return
+        linha = self.ui.tableWidget_usuarios.currentRow()
+        nome = self.ui.tableWidget_usuarios.item(linha, 1).text()
+        email = self.ui.tableWidget_usuarios.item(linha, 2).text()
+        confirmar = QtWidgets.QMessageBox.question(
+            self.ui, "Excluir cliente",
+            f"Deseja excluir {nome}?\n\nAs reservas deste cliente também serão apagadas.")
+        if confirmar != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+        try:
+            # Mesma regra do site ao excluir a conta
+            executar("DELETE FROM reservas WHERE usuario_email = %s", (email,))
+            executar("DELETE FROM reservas_churrasqueira WHERE usuario_email = %s", (email,))
+            executar("DELETE FROM pagamentos WHERE usuario_email = %s AND status = 'pendente'", (email,))
+            executar("DELETE FROM usuarios WHERE id = %s", (id_cliente,))
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self.ui, "Erro", f"Erro ao excluir cliente:\n{e}")
+            return
+        self.ui.statusBar().showMessage("Cliente excluído.", 5000)
+        self.carregar_clientes()
+        self.carregar_reservas_detalhadas()
+        self.carregar_totais()
 
     def pesquisar_cliente(self):
         termo = self.ui.txt_busca_cliente.text().strip().lower()
@@ -320,6 +474,34 @@ class PainelAdmin:
                              linhas)
         except Exception as e:
             QtWidgets.QMessageBox.critical(self.ui, "Erro ao Carregar Reservas", f"Detalhes:\n{e}")
+
+    def cancelar_reserva(self):
+        tabela = self.ui.tableWidget_reservas
+        id_reserva = id_selecionado(tabela)
+        if id_reserva is None:
+            QtWidgets.QMessageBox.warning(self.ui, "Aviso", "Selecione uma reserva na lista!")
+            return
+        linha = tabela.currentRow()
+        local = tabela.item(linha, 6).text()
+        tipo = "quadra" if local == "Quadra" else "churrasqueira"
+        tabela_banco = "reservas" if tipo == "quadra" else "reservas_churrasqueira"
+        descricao = f"{local} em {tabela.item(linha, 2).text()} ({tabela.item(linha, 3).text()}) - {tabela.item(linha, 1).text()}"
+
+        confirmar = QtWidgets.QMessageBox.question(self.ui, "Cancelar reserva", f"Deseja cancelar esta reserva?\n\n{descricao}")
+        if confirmar != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+        try:
+            executar(f"DELETE FROM {tabela_banco} WHERE id = %s", (id_reserva,))
+            # Mesma regra do site: pagamento pendente é descartado, pagamento feito fica como cancelado (reembolso)
+            executar("DELETE FROM pagamentos WHERE tipo = %s AND reserva_id = %s AND status = 'pendente'", (tipo, id_reserva))
+            executar("UPDATE pagamentos SET status = 'cancelado' WHERE tipo = %s AND reserva_id = %s", (tipo, id_reserva))
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self.ui, "Erro", f"Erro ao cancelar reserva:\n{e}")
+            return
+        self.ui.statusBar().showMessage("Reserva cancelada. O horário já está livre no site.", 5000)
+        self.carregar_reservas_detalhadas()
+        self.carregar_pagamentos()
+        self.carregar_totais()
 
     # ------------------------------------------
     # SUPORTE (mensagens enviadas pelo site)
@@ -785,13 +967,42 @@ class TelaLogin:
         lado_marca.addWidget(ui.label)
         lado_marca.addStretch()
 
-        # Lado direito com o formulário
-        ui.tabWidget_login.setFixedSize(ui.tabWidget_login.size())
+        # O arquivo .ui usa fontes sem "hinting", o que deixa as letras borradas no Windows
+        for widget in [ui] + ui.findChildren(QtWidgets.QWidget):
+            fonte = widget.font()
+            fonte.setHintingPreference(QtGui.QFont.HintingPreference.PreferDefaultHinting)
+            widget.setFont(fonte)
+
+        # Título em texto simples (o .ui trazia HTML com fonte própria)
+        ui.label_2.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+        ui.label_2.setText("Sistema Oficial de Gestão e Reservas")
+        ui.label_2.setProperty("classe", "titulo")
         ui.label_2.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        # Formulários organizados em coluna: rótulo em cima, campo embaixo, tudo centralizado
+        self.montar_formulario(ui.tab, [(ui.label_3, ui.txt_email_login), (ui.label_4, ui.txt_senha_login)],
+                               ui.btn_login, ui.btn_esqueceu_senha)
+        self.montar_formulario(ui.tab_2, [(ui.label_5, ui.txt_nome_cad), (ui.label_6, ui.txt_email_cad),
+                                          (ui.label_7, ui.txt_tel_cad), (ui.label_8, ui.txt_senha_cad)],
+                               ui.btn_cadastrar)
+        ui.txt_email_login.setPlaceholderText("seuemail@exemplo.com")
+        ui.txt_senha_login.setPlaceholderText("Digite sua senha")
+        ui.txt_nome_cad.setPlaceholderText("Seu nome completo")
+        ui.txt_email_cad.setPlaceholderText("seuemail@exemplo.com")
+        ui.txt_tel_cad.setPlaceholderText("(11) 90000-0000")
+        ui.txt_senha_cad.setPlaceholderText("Crie uma senha")
+        ui.tabWidget_login.setMinimumSize(0, 0)
+        ui.tabWidget_login.setMaximumSize(16777215, 16777215)
+        ui.tabWidget_login.setFixedWidth(460)
+        ui.tabWidget_login.setSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Maximum)
+        ui.tabWidget_login.currentChanged.connect(self.ajustar_altura_formulario)
+        self.ajustar_altura_formulario(ui.tabWidget_login.currentIndex())
+
+        # Lado direito com o formulário centralizado
         conteudo = QtWidgets.QVBoxLayout()
         conteudo.addStretch()
         conteudo.addWidget(ui.label_2, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
-        conteudo.addSpacing(10)
+        conteudo.addSpacing(16)
         conteudo.addWidget(ui.tabWidget_login, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
         conteudo.addStretch()
 
@@ -799,6 +1010,34 @@ class TelaLogin:
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(marca, 2)
         layout.addLayout(conteudo, 3)
+
+    def ajustar_altura_formulario(self, indice):
+        """O cartão fica do tamanho da aba aberta (login é menor que o cadastro)."""
+        abas = self.ui.tabWidget_login
+        conteudo = abas.widget(indice).layout().sizeHint().height()
+        abas.setFixedHeight(conteudo + abas.tabBar().sizeHint().height() + 4)
+
+    def montar_formulario(self, pagina, campos, botao_principal, link=None):
+        coluna = QtWidgets.QVBoxLayout(pagina)
+        coluna.setContentsMargins(36, 28, 36, 28)
+        coluna.setSpacing(6)
+        for rotulo, campo in campos:
+            rotulo.setProperty("classe", "rotulo")
+            rotulo.style().unpolish(rotulo)  # Reaplica o estilo depois de mudar a classe
+            rotulo.style().polish(rotulo)
+            campo.setMinimumHeight(38)
+            coluna.addWidget(rotulo)
+            coluna.addWidget(campo)
+            coluna.addSpacing(10)
+        botao_principal.setMinimumHeight(44)
+        botao_principal.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        coluna.addSpacing(6)
+        coluna.addWidget(botao_principal)
+        if link is not None:
+            link.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+            coluna.addSpacing(4)
+            coluna.addWidget(link, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
+        coluna.addStretch()
 
     def fazer_login(self):
         email = self.ui.txt_email_login.text()

@@ -41,6 +41,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $mensagem = "<div class='erro'>Erro na conexão: " . $e->getMessage() . "</div>";
     }
 }
+
+// Dias em que a churrasqueira já está reservada, para a tela oferecer só datas livres
+$datas_ocupadas = [];
+try {
+    $conn = conectar_banco();
+    $resultado = $conn->query("SELECT data FROM reservas_churrasqueira WHERE data >= CURDATE()");
+    while ($linha = $resultado->fetch_assoc()) {
+        $datas_ocupadas[] = $linha['data'];
+    }
+    $conn->close();
+} catch (Exception $e) {
+    // Sem a lista, o banco continua impedindo duas reservas no mesmo dia
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -90,6 +103,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .btn-agendar:hover { background: #b04600; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(211, 84, 0, 0.3); }
         .erro { background: #ffe6e6; color: #900; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; }
 
+        .datas-livres { display: none; background: #fff5ec; border-radius: 8px; padding: 12px 15px; margin-top: 10px; font-size: 14px; color: #8a3a00; }
+        .datas-livres div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .datas-livres button { background: white; border: 2px solid var(--laranja); color: var(--laranja); border-radius: 8px; padding: 8px 12px; font-weight: bold; cursor: pointer; font-family: inherit; }
+        .datas-livres button:hover { background: var(--laranja); color: white; }
+
         .preco-info { background: #fff5ec; border: 1px solid #f5c6a5; color: #8a3a00; padding: 12px 15px; border-radius: 8px; margin-bottom: 25px; font-size: 14px; }
 
         @media (max-width: 768px) {
@@ -101,6 +119,56 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </style>
     <link rel="stylesheet" href="comum.css">
     <script src="comum.js" defer></script>
+    <script>
+        // Dias em que a churrasqueira já está reservada (vem do banco)
+        const DATAS_OCUPADAS = <?php echo json_encode($datas_ocupadas); ?>;
+
+        function formatarIso(data) {
+            return data.getFullYear() + '-' + String(data.getMonth() + 1).padStart(2, '0') + '-' + String(data.getDate()).padStart(2, '0');
+        }
+
+        // Próximas datas livres a partir do dia escolhido
+        function proximasDatasLivres(inicio, quantidade) {
+            const livres = [];
+            const data = new Date(inicio + 'T12:00:00');
+            while (livres.length < quantidade) {
+                data.setDate(data.getDate() + 1);
+                const iso = formatarIso(data);
+                if (!DATAS_OCUPADAS.includes(iso)) {
+                    livres.push(iso);
+                }
+            }
+            return livres;
+        }
+
+        // Se o dia escolhido já tem reserva, limpa o campo e oferece as próximas datas livres
+        function verificarData() {
+            const campo = document.getElementById('campo-data');
+            const caixa = document.getElementById('datas-livres');
+            const escolhida = campo.value;
+            if (!DATAS_OCUPADAS.includes(escolhida)) {
+                caixa.style.display = 'none';
+                return;
+            }
+            campo.value = '';
+            const botoes = proximasDatasLivres(escolhida, 4).map(function (iso) {
+                const partes = iso.split('-');
+                return '<button type="button" data-data="' + iso + '">' + partes[2] + '/' + partes[1] + '/' + partes[0] + '</button>';
+            }).join('');
+            caixa.innerHTML = 'Escolha uma das próximas datas disponíveis:<div>' + botoes + '</div>';
+            caixa.style.display = 'block';
+            caixa.querySelectorAll('button').forEach(function (botao) {
+                botao.addEventListener('click', function () {
+                    campo.value = botao.dataset.data;
+                    caixa.style.display = 'none';
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('campo-data').addEventListener('change', verificarData);
+        });
+    </script>
 </head>
 <body>
 <?php exibir_aviso(); ?>
@@ -133,7 +201,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <form method="POST" action="">
                 <div class="form-group">
                     <label class="titulo-campo">📅 Data do Churrasco:</label>
-                    <input type="date" name="data" required min="<?php echo date('Y-m-d'); ?>">
+                    <input type="date" name="data" id="campo-data" required min="<?php echo date('Y-m-d'); ?>">
+                    <div id="datas-livres" class="datas-livres"></div>
                 </div>
                 
                 <div class="form-group">
