@@ -87,14 +87,19 @@
         .socio-price h3 { font-size: 40px; margin: 10px 0; }
         .socio-price span { font-size: 14px; color: #64748b; }
 
-        /* Botão Flutuante */
+        /* Botões Flutuantes */
         .whatsapp-float { position: fixed; bottom: 30px; right: 30px; background-color: var(--whatsapp); color: white; border-radius: 50px; font-size: 32px; box-shadow: 0 8px 25px rgba(37, 211, 102, 0.4); z-index: 1000; width: 65px; height: 65px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
         .whatsapp-float:hover { transform: scale(1.1); background-color: #1ebe5d; }
+
+        .instagram-float { position: fixed; bottom: 105px; right: 30px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; border-radius: 50px; font-size: 32px; box-shadow: 0 8px 25px rgba(225, 48, 108, 0.4); z-index: 1000; width: 65px; height: 65px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+        .instagram-float:hover { transform: scale(1.1); filter: brightness(1.1); }
 
         /* Footer e Mapa */
         .mapa-box { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 1100px; margin: 0 auto; }
         .mapa-container { margin-top: 20px; border-radius: 12px; overflow: hidden; }
         .footer { background: var(--azul-principal); color: var(--branco); text-align: center; padding: 50px 20px 30px 20px; margin-top: 60px; border-top: 5px solid var(--amarelo); }
+        .footer-socials a { display: inline-block; color: var(--branco); font-size: 24px; margin: 10px 12px; transition: 0.3s; }
+        .footer-socials a:hover { color: var(--amarelo); transform: translateY(-3px); }
 
         @media (max-width: 768px) {
             .nav-links { display: none; }
@@ -126,8 +131,9 @@
         </div>
     </nav>
 
-    <!-- WHATSAPP -->
-    <a href="https://wa.me/551144613996" target="_blank" class="whatsapp-float"><i class="fab fa-whatsapp"></i></a>
+    <!-- BOTÕES FLUTUANTES -->
+    <a href="https://www.instagram.com/associacao.amigosdecamilopolis/" target="_blank" class="instagram-float" title="Siga nosso Instagram"><i class="fab fa-instagram"></i></a>
+    <a href="https://wa.me/551144613996" target="_blank" class="whatsapp-float" title="Fale pelo WhatsApp"><i class="fab fa-whatsapp"></i></a>
 
     <!-- HERO -->
     <header class="hero">
@@ -286,7 +292,11 @@
     <!-- FOOTER -->
     <footer class="footer">
         <p style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">Associação Amigos de Camilópolis</p>
-        <p style="font-size: 14px; color: #cbd5e1; margin-bottom: 20px;">Desenvolvido para conectar nossa comunidade através do esporte e do bem-estar.</p>
+        <p style="font-size: 14px; color: #cbd5e1; margin-bottom: 15px;">Desenvolvido para conectar nossa comunidade através do esporte e do bem-estar.</p>
+        <div class="footer-socials">
+            <a href="https://www.instagram.com/associacao.amigosdecamilopolis/" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="https://wa.me/551144613996" target="_blank" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+        </div>
         <p style="margin-top: 15px; font-size: 13px; color: #94a3b8;">© <?php echo date("Y"); ?> - Todos os direitos reservados.</p>
     </footer>
 
