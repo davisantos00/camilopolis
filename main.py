@@ -952,21 +952,6 @@ class TelaLogin:
     def organizar_layout(self):
         ui = self.ui
 
-        # Lado esquerdo azul com a logo
-        marca = QtWidgets.QFrame()
-        marca.setProperty("classe", "marca")
-        ui.lbl_logo.setFixedSize(200, 200)
-        ui.lbl_logo.setScaledContents(True)
-        ui.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        ui.label.setWordWrap(True)
-        lado_marca = QtWidgets.QVBoxLayout(marca)
-        lado_marca.setContentsMargins(40, 40, 40, 40)
-        lado_marca.addStretch()
-        lado_marca.addWidget(ui.lbl_logo, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
-        lado_marca.addSpacing(20)
-        lado_marca.addWidget(ui.label)
-        lado_marca.addStretch()
-
         # O arquivo .ui usa fontes sem "hinting", o que deixa as letras borradas no Windows
         for widget in [ui] + ui.findChildren(QtWidgets.QWidget):
             fonte = widget.font()
@@ -976,8 +961,15 @@ class TelaLogin:
         # Título em texto simples (o .ui trazia HTML com fonte própria)
         ui.label_2.setTextFormat(QtCore.Qt.TextFormat.PlainText)
         ui.label_2.setText("Sistema Oficial de Gestão e Reservas")
-        ui.label_2.setProperty("classe", "titulo")
+        ui.label_2.setProperty("classe", "titulo-login")
         ui.label_2.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+
+        # Logo e nome da associação em cima do formulário
+        ui.lbl_logo.setFixedSize(120, 120)
+        ui.lbl_logo.setScaledContents(True)
+        ui.label.setText(NOME_ASSOCIACAO.upper())
+        ui.label.setProperty("classe", "nome-associacao")
+        ui.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # Formulários organizados em coluna: rótulo em cima, campo embaixo, tudo centralizado
         self.montar_formulario(ui.tab, [(ui.label_3, ui.txt_email_login), (ui.label_4, ui.txt_senha_login)],
@@ -998,18 +990,25 @@ class TelaLogin:
         ui.tabWidget_login.currentChanged.connect(self.ajustar_altura_formulario)
         self.ajustar_altura_formulario(ui.tabWidget_login.currentIndex())
 
-        # Lado direito com o formulário centralizado
-        conteudo = QtWidgets.QVBoxLayout()
-        conteudo.addStretch()
-        conteudo.addWidget(ui.label_2, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
-        conteudo.addSpacing(16)
-        conteudo.addWidget(ui.tabWidget_login, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
-        conteudo.addStretch()
+        # Tudo numa coluna só, no centro da tela, sobre o fundo azul
+        fundo = QtWidgets.QFrame()
+        fundo.setProperty("classe", "marca")
+        centro = QtCore.Qt.AlignmentFlag.AlignHCenter
+        coluna = QtWidgets.QVBoxLayout(fundo)
+        coluna.setContentsMargins(24, 24, 24, 24)
+        coluna.addStretch()
+        coluna.addWidget(ui.lbl_logo, 0, centro)
+        coluna.addSpacing(12)
+        coluna.addWidget(ui.label, 0, centro)
+        coluna.addSpacing(4)
+        coluna.addWidget(ui.label_2, 0, centro)
+        coluna.addSpacing(20)
+        coluna.addWidget(ui.tabWidget_login, 0, centro)
+        coluna.addStretch()
 
-        layout = QtWidgets.QHBoxLayout(ui)
+        layout = QtWidgets.QVBoxLayout(ui)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(marca, 2)
-        layout.addLayout(conteudo, 3)
+        layout.addWidget(fundo)
 
     def ajustar_altura_formulario(self, indice):
         """O cartão fica do tamanho da aba aberta (login é menor que o cadastro)."""

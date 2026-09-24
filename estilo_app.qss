@@ -17,9 +17,17 @@ QMainWindow, QDialog {
 QFrame[classe="marca"] {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #072a50, stop:1 #0A3D73);
 }
-QFrame[classe="marca"] QLabel {
+QLabel[classe="nome-associacao"] {
     color: #FFC107;
-    background: transparent;
+    font-size: 12pt;
+    font-weight: bold;
+    font-style: normal;
+    letter-spacing: 1px;
+}
+QLabel[classe="titulo-login"] {
+    color: white;
+    font-size: 20pt;
+    font-weight: 800;
 }
 QLabel[classe="rotulo"] {
     font-weight: bold;
@@ -30,6 +38,15 @@ QTabWidget#tabWidget_login::tab-bar {
 }
 QTabWidget#tabWidget_login QTabBar::tab {
     min-width: 150px;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+QTabWidget#tabWidget_login QTabBar::tab:selected {
+    background: white;
+    color: #0A3D73;
+}
+QTabWidget#tabWidget_login QTabBar::tab:hover:!selected {
+    background: rgba(255, 255, 255, 0.3);
 }
 QLabel#lbl_logo, QLabel#lbl_logo_topo {
     border: 3px solid #FFC107;
